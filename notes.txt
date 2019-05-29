@@ -1,0 +1,5 @@
+# Things I learned
+
+- Be careful with naming and how python sorts. Solution here: natsort
+- Be careful with reshaping images. Might botch them
+- Avoid memory error in Keras: use fit_generator with ImageDataGenerator

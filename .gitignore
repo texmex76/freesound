@@ -2,5 +2,8 @@ FSDKaggle2018.audio_train/
 generated_tex/
 generated_tex_gray/
 generated_tex_gray_down/
+generated_tex_gray_double_down/
 README_freesound.md
 *.csv
+*.png
+*.h5
