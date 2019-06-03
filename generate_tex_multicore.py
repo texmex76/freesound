@@ -20,6 +20,7 @@ X_files = np.asarray(df)
 Y_raw = X_files[:,1]
 
 m = X_files.shape[0]
+# m = 25
 print('Number of training examples: {}'.format(m))
 
 # Load audio files into dataframe
@@ -32,25 +33,72 @@ for idx in range(m):
   data = np.asarray(data, dtype=float)
   X_raw[idx,0] = data
 
-fs = 44_100
-# change wave data to mel-stft
-def calculate_melsp(x, n_fft=1024, hop_length=128):
+sr = 44_100
+
+def save_melsp(x, name, n_fft=1024, hop_length=128):
   stft = np.abs(librosa.stft(x, n_fft=n_fft, hop_length=hop_length))**2
   log_stft = librosa.power_to_db(stft)
   melsp = librosa.feature.melspectrogram(S=log_stft,n_mels=128)
-  return melsp
+  b = librosa.display.specshow(melsp, sr=sr)
+  plt.gcf()
 
-# function for creating histogram and saving it
-def create_hist (alist):
+  directory = base_dir + 'tex/melsp_tex/' + name
+  plt.savefig(directory, bbox_inches = 'tight', pad_inches = -0.03)
+  print('Saved melsp ' + name)
+
+  return
+
+def save_har_per(x, name):
+  y_harmonic, y_percussive = librosa.effects.hpss(x)
+  S_harmonic   = librosa.feature.melspectrogram(y_harmonic, sr=sr)
+  S_percussive = librosa.feature.melspectrogram(y_percussive, sr=sr)
+  log_Sh = librosa.power_to_db(S_harmonic, ref=np.max)
+  log_Sp = librosa.power_to_db(S_percussive, ref=np.max)
+  librosa.display.specshow(log_Sh, sr=sr)
+
+  directory = base_dir + 'tex/sh_tex/' + name
+  plt.savefig(directory, bbox_inches = 'tight', pad_inches = -0.03)
+  print('Saved sh ' + name)
+
+  librosa.display.specshow(log_Sp, sr=sr)
+
+  directory = base_dir + 'tex/sp_tex/' + name
+  plt.savefig(directory, bbox_inches = 'tight', pad_inches = -0.03)
+  print('Saved sp ' + name)
+
+  return
+
+def save_chromo(x, name):
+  y_harmonic, _ = librosa.effects.hpss(x)
+  C = librosa.feature.chroma_cqt(y=y_harmonic, sr=sr)
+  librosa.display.specshow(C, sr=sr, vmin=0, vmax=1)
+  
+  directory = base_dir + 'tex/ch_tex/' + name
+  plt.savefig(directory, bbox_inches = 'tight', pad_inches = -0.03)
+  print('Saved ch ' + name)
+  return
+
+def save_mfcc(x, name):
+  S = librosa.feature.melspectrogram(x, sr=sr, n_mels=128)
+  log_S = librosa.power_to_db(S, ref=np.max)
+  mfcc        = librosa.feature.mfcc(S=log_S, n_mfcc=13)
+  librosa.display.specshow(mfcc)
+  
+  directory = base_dir + 'tex/mfcc_tex/' + name
+  plt.savefig(directory, bbox_inches = 'tight', pad_inches = -0.03)
+  print('Saved mfcc ' + name)
+  return
+
+base_dir = '/home/bernhard/Documents/ml/freesound/'
+
+def generate_tex(alist):
   x = alist[0]
   idx = alist[1]
-  a = calculate_melsp(x)
-  b = librosa.display.specshow(a, sr=fs)
-  plt.gcf()
-  name = '/home/bernhard/Documents/ml/freesound/generated_tex/tex_' + str(idx)
-  plt.savefig(name, bbox_inches = 'tight', pad_inches = -0.03)
-  print('Saved spectrogram ' + str(idx))
-  return
+  name = f'{idx:04}'
+  save_melsp(x, name)
+  save_har_per(x, name)
+  save_chromo(x, name)
+  save_mfcc(x, name)
 
 cores = 8
 core_count = 0
@@ -63,6 +111,6 @@ for idx in range(m):
     core_count += 1
   if core_count == cores:
     pool = Pool(processes=8)
-    _ = pool.map(create_hist, a)
+    _ = pool.map(generate_tex, a)
     core_count = 0
     a = []

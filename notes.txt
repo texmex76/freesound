@@ -3,3 +3,28 @@
 - Be careful with naming and how python sorts. Solution here: natsort
 - Be careful with reshaping images. Might botch them
 - Avoid memory error in Keras: use fit_generator with ImageDataGenerator
+
+Model with ~72% accuracy:
+
+```python
+Conv2D(32, (3,3), strides=1, input_shape=(X_train.shape[1:]), activation='relu'),
+Conv2D(64, (3,3), strides=1, activation='relu'),
+MaxPooling2D(pool_size=(2,2)),
+Conv2D(128, (3,3), strides=1, activation='relu'),
+Conv2D(256, (3,3), strides=1, activation='relu'),
+MaxPooling2D(pool_size=(2,2)),
+Flatten(),
+Dense(128, activation='relu'),
+Dense(64, activation='relu'),
+Dense(41, activation='softmax'),
+```
+
+# New approach
+
+Combine different models
+
+- Generate new training set $\rightarrow$ RGB or grayscale?
+- If using RGB: modify model accordingly
+- Implement EarlyStoppingMonitor and ReduceLROnPlateau
+- Code for training each model separately
+- Code for combining models

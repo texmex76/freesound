@@ -7,17 +7,18 @@ from itertools import islice
 import gc
 from natsort import natsorted
 
-from keras.preprocessing.image import ImageDataGenerator
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
 
-from keras.layers import Dense, Activation, Dropout, Conv2D, MaxPooling2D, Flatten
+from keras.preprocessing.image import ImageDataGenerator
+from keras.layers import Dense, Activation, Dropout, Conv2D, MaxPooling2D, Flatten, BatchNormalization
 from keras.models import Sequential
 from keras.optimizers import Adam, RMSprop
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
-images_path = '/home/bernhard/Documents/ml/freesound/generated_tex_gray_double_down/'
+images_path = '/home/bernhard/Documents/ml/freesound/tex_down/ch_tex'
 m = len(os.listdir(images_path))
-# m = 2000
+# m = 200
 
 cols = ['fname', 'label', 'manually_verified']
 df = pd.read_csv('train_post_competition.csv', usecols=cols)
@@ -37,24 +38,18 @@ def load_images(path):
     with open(os.path.join(path, image), 'rb') as i:
       img = Image.open(i)
       data = np.asarray(img, dtype='int32')
-      # data = data[:,:,0]
+      # data = data[:,:,:3]
       loaded_images.append(data)
   loaded_images = np.array(loaded_images)
   return loaded_images
 
 X = load_images(images_path)
-# Down: 300 223
-# Double down: 135 100
-# X = images.reshape((m, 300, 223))
+print(X.shape)
 
 X = X.reshape((X.shape[0], X.shape[1], X.shape[2], 1))
 print('X shape: {}'.format(X.shape))
 print('Y shape: {}'.format(Y.shape))
 print('Number tex: {}'.format(m))
-
-# Plot an image
-# plt.imshow(X[0][:,:,0])
-# plt.show()
 
 
 Y_one_hot = OneHotEncoder(sparse=False)
@@ -73,42 +68,55 @@ X = []
 gc.collect()
 
 datagen = ImageDataGenerator(
-        rotation_range=2,
         zoom_range = 0.2,
-        width_shift_range=0.2,
-        height_shift_range=0.2)
+        width_shift_range=0.3,
+        height_shift_range=0.3,
+        )
 
 datagen.fit(X_train)
 
 model = Sequential([
+  # Conv2D(32, (3,3), strides=1, input_shape=(X_train.shape[1:]), activation='relu'),
+  # MaxPooling2D(pool_size=(2,2)),
+  # Conv2D(64, (3,3), strides=1, activation='relu'),
+  # MaxPooling2D(pool_size=(2,2)),
+  # Conv2D(128, (3,3), strides=1, activation='relu'),
+  # MaxPooling2D(pool_size=(2,2)),
+  # Conv2D(256, (3,3), strides=1, activation='relu'),
+  # MaxPooling2D(pool_size=(2,2)),
+  # Dropout(0.25),
+  # Flatten(),
+  # Dense(128, activation='relu'),
+  # Dense(64, activation='relu'),
+  # Dropout(0.25),
+  # Dense(41, activation='softmax'),
   Conv2D(32, (3,3), strides=1, input_shape=(X_train.shape[1:]), activation='relu'),
-  MaxPooling2D(pool_size=(2,2)),
   Conv2D(64, (3,3), strides=1, activation='relu'),
   MaxPooling2D(pool_size=(2,2)),
   Conv2D(128, (3,3), strides=1, activation='relu'),
-  MaxPooling2D(pool_size=(2,2)),
   Conv2D(256, (3,3), strides=1, activation='relu'),
   MaxPooling2D(pool_size=(2,2)),
-  Dropout(0.25),
   Flatten(),
   Dense(128, activation='relu'),
-  Dropout(0.5),
+  Dense(64, activation='relu'),
   Dense(41, activation='softmax'),
 ])
 
 # model.summary()
+# model.load_weights("sound_weights.h5")
+# print('Loaded weights')
 
 # opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
 opt = RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.0)
 model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['categorical_accuracy'])
 
-# batch_size = 64
-# steps_per_epoch = int(X_train.shape[0]/batch_size)
-# history = model.fit(X_train, Y_train, epochs=30, steps_per_epoch=steps_per_epoch,
-#                     validation_data = (X_val,Y_val), validation_steps=1, verbose=1)
+callbacks = [EarlyStopping(monitor='val_loss', patience=4),
+             ModelCheckpoint(filepath='weights/model.h5', monitor='val_loss',
+             save_best_only=True)]
 
 history =  model.fit_generator(datagen.flow(X_train, Y_train, batch_size=42),
-  epochs=30, steps_per_epoch=m/42, validation_data = (X_val,Y_val))
+  epochs=90, steps_per_epoch=m/42, validation_data = (X_val,Y_val), verbose=1,
+  callbacks=callbacks)
 
 
 # summarize history for accuracy
@@ -127,5 +135,5 @@ plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
 
-model.save_weights('sound_weights.h5')
-print('Saved weights')
+# model.save_weights('sound_weights.h5')
+# print('Saved weights')
