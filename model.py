@@ -14,9 +14,9 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.layers import Dense, Activation, Dropout, Conv2D, MaxPooling2D, Flatten, BatchNormalization
 from keras.models import Sequential
 from keras.optimizers import Adam, RMSprop
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
-images_path = '/home/bernhard/Documents/ml/freesound/tex_down/ch_tex'
+images_path = 'tex_down/ch_tex'
 m = len(os.listdir(images_path))
 # m = 200
 
@@ -76,47 +76,43 @@ datagen = ImageDataGenerator(
 datagen.fit(X_train)
 
 model = Sequential([
-  # Conv2D(32, (3,3), strides=1, input_shape=(X_train.shape[1:]), activation='relu'),
-  # MaxPooling2D(pool_size=(2,2)),
-  # Conv2D(64, (3,3), strides=1, activation='relu'),
-  # MaxPooling2D(pool_size=(2,2)),
-  # Conv2D(128, (3,3), strides=1, activation='relu'),
-  # MaxPooling2D(pool_size=(2,2)),
-  # Conv2D(256, (3,3), strides=1, activation='relu'),
-  # MaxPooling2D(pool_size=(2,2)),
-  # Dropout(0.25),
-  # Flatten(),
-  # Dense(128, activation='relu'),
-  # Dense(64, activation='relu'),
-  # Dropout(0.25),
-  # Dense(41, activation='softmax'),
   Conv2D(32, (3,3), strides=1, input_shape=(X_train.shape[1:]), activation='relu'),
+  MaxPooling2D(pool_size=(2,2)),
   Conv2D(64, (3,3), strides=1, activation='relu'),
   MaxPooling2D(pool_size=(2,2)),
   Conv2D(128, (3,3), strides=1, activation='relu'),
+  MaxPooling2D(pool_size=(2,2)),
   Conv2D(256, (3,3), strides=1, activation='relu'),
   MaxPooling2D(pool_size=(2,2)),
+  Dropout(0.25),
   Flatten(),
   Dense(128, activation='relu'),
   Dense(64, activation='relu'),
+  Dropout(0.25),
   Dense(41, activation='softmax'),
 ])
 
 # model.summary()
-# model.load_weights("sound_weights.h5")
+model.load_weights("weights/model_ch.h5")
 # print('Loaded weights')
 
 # opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
 opt = RMSprop(lr=0.001, rho=0.9, epsilon=1e-08, decay=0.0)
 model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['categorical_accuracy'])
 
-callbacks = [EarlyStopping(monitor='val_loss', patience=4),
+# Learning rate reduction
+lrr = ReduceLROnPlateau(monitor='val_categorical_accuracy', 
+                        patience=2, 
+                        verbose=1, 
+                        factor=0.5, 
+min_lr=0.00001)
+
+callbacks = [lrr, EarlyStopping(monitor='val_loss', patience=4),
              ModelCheckpoint(filepath='weights/model.h5', monitor='val_loss',
              save_best_only=True)]
 
 history =  model.fit_generator(datagen.flow(X_train, Y_train, batch_size=42),
-  epochs=90, steps_per_epoch=m/42, validation_data = (X_val,Y_val), verbose=1,
-  callbacks=callbacks)
+  epochs=90, steps_per_epoch=m/42, validation_data = (X_val,Y_val), verbose=1)
 
 
 # summarize history for accuracy
@@ -134,6 +130,7 @@ plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
+plt.show()
 
 # model.save_weights('sound_weights.h5')
 # print('Saved weights')

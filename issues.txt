@@ -1,5 +1,0 @@
-# Sound classification issues
-
-- Dataset hard even for human
-- Different loudness levels?
-- Downscaling $\rightarrow$ resulting spectrogram even recognizable?

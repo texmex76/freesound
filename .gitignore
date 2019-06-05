@@ -1,8 +1,7 @@
 FSDKaggle2018.audio_train/
 tex/
 tex_down/
-weights/
 README_freesound.md
 *.csv
 *.png
-*.h5
+*.zip
